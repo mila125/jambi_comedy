@@ -118,7 +118,7 @@ search_exe_loop:
     
     
 
-    invoke crt_fwrite,addr filebuffer ,filesize_sf,1,filehandle_sf
+    invoke crt_fwrite,addr filebuffer ,5000,1,filehandle_sf
          ; WriteFile(). Write the buffer back to the file.
     
     
